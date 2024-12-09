@@ -11,7 +11,8 @@ output: html_document
 
 packages <- 
   c("purrr",
-    "renv", "usethis", 
+    "renv", "stringr", 
+    "usethis", 
     "httr2", "rvest", 
     "jsonlite", "dplyr", 
     "tidyr", "readr")
@@ -92,33 +93,26 @@ search_html_extract <- function(html) {
     html %>%
     html_elements(".a-color-base.a-text-normal") |> 
     html_text2()
-  ## Better not to add prices etc because they are not always available
-  # prices_whole_products <- 
-  #   html %>%
-  #   html_elements(".a-price-whole") |> 
-  #   html_text2()
-  # prices_fractional_products <-
-  #   html %>%
-  #   html_elements(".a-price-fraction") |> 
-  #   html_text2()
+  ## Better not to add prices as they are not always available, matching post-hoc
+  ## is hard.
    links_products <- 
      html |> 
-     html_elements("div.a-row.a-size-base.a-color-base > div:nth-child(1) > a") |> 
+     html_elements("h2 > a") |> 
      html_attr("href")
   
   if (length(titles_products) == 0) {
     warning("No products found")
     return(NULL)
   }
-  # if (length(titles_products) != length(links_products)) {
-  #   warning(paste0("Number of titles and prices do not match: ", 
-  #               length(titles_products), " titles and ", 
-  #               length(prices_whole_products), " prices"))
-  # }
+   if (length(titles_products) != length(links_products)) {
+     warning(paste0("Number of titles and prices do not match: ", 
+                 length(titles_products), " titles and ", 
+                 length(prices_whole_products), " prices"))
+   }
   
   list_products <- 
-    list(titles_products, 
-         links_products)
+    list(title = titles_products, 
+         link = links_products)
   return(list_products)
 }
 
@@ -131,20 +125,72 @@ list_search_output <- search_html_extract(html_search)
 
 # 3. Get the output in an easier to parse format.
 
-list_search_output <- 
+dat_search_output <- 
   list_search_output |> 
-  transpose() |> 
   as_tibble()
 
 
 ```
 
 
+```{r function-product-info}
+
+product_html_extract <- function(html) {
+  
+  asin <- 
+    html |> 
+    html_elements("#productDetails_expanderTables_depthRightSections tr:nth-child(8) .prodDetAttrValue") |>
+    html_text() |> 
+    str_trim()
+  
+  details <- 
+    html_product |> 
+     html_elements("#productDetails_expanderTables_depthRightSections .a-section-expander-container:nth-child(1) .a-size-base , #productDetails_expanderTables_depthRightSections tr:nth-child(7) td") |>
+     html_text2() 
+  
+  n_reviews <- 
+    html |> 
+    html_elements("#cm_cr_dp_d_rating_histogram .a-color-secondary") |>
+    html_text2()
+  
+  ratings <- 
+    html |> 
+    html_elements(".review-rating") |>
+    html_text2()
+  
+  review_title <- 
+    html |> 
+    html_elements(".a-text-bold span , #cm_cr_dp_d_rating_histogram .a-color-secondary") |>
+    html_text2()
+  
+  review_text <- 
+    html |> 
+    html_elements("#cm-cr-dp-review-list .a-expander-partial-collapse-content span") |>
+    html_text2()
+  
+  list_info <-
+    list(asin = asin,
+         details = details,
+         n_reviews = n_reviews,
+         rating = rating,
+         review_title = review_title,
+         review_text = review_text)
+  
+  return(list_info)
+  
+}
+
+```
+
+
+
 ```{r}
 
 html_product <- 
-  requester(list[[1]][4])
+  requester(paste0("https://www.amazon.co.uk", dat_search_output$link[1]))
 
+list_product_info <- 
+  product_html_extract(html_product)
 
 
 
