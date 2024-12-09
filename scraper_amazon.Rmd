@@ -1,7 +1,7 @@
 ---
 title: "Amazon HTTP"
 author: "Simon T van Baal"
-date: "2024-12-02"
+date: "2024-12-09"
 output: html_document
 ---
 
@@ -10,7 +10,11 @@ output: html_document
 ```{r}
 
 packages <- 
-  c("renv", "usethis", "httr2", "rvest", "jsonlite", "dplyr", "tidyr", "readr")
+  c("purrr",
+    "renv", "usethis", 
+    "httr2", "rvest", 
+    "jsonlite", "dplyr", 
+    "tidyr", "readr")
 
 for (package in packages) {
   if (!require(package, character.only = TRUE)) {
@@ -33,10 +37,119 @@ for (package in packages) {
 
 ```{r}
 
+# Amazon scraper
+
+# 1. Get the Amazon Standard Identification Number (ASIN) of a product
+
+url <- "https://www.amazon.co.uk/s?k=e-bike&low-price=225&high-price="
+
+requester <- function(url) {
+  
+  # Setup the request
+  req <- request(url)
+  
+  # To be polite, we identify ourselves to the server.
+  req <- 
+    req |> 
+    req_headers(
+    Accept = "application/json",
+    `User-Agent` = "Simon van Baal, University of Leeds",
+    `email` = "s.t.vanbaal@leeds.ac.uk"
+  )
+  
+  # Get the HTML content within a tryCatch for error handling 
+  
+  html <- 
+    tryCatch(
+    
+      # Attempt the GET request
+      response <- req_perform(req),
+      error = function(e) {
+        # Handle errors (e.g., network issues, invalid URL)
+        warning(sprintf("Error occurred during GET request: %s", e$message))
+        NULL
+    },
+      warning = function(w) {
+        # Handle warnings (e.g., deprecated functions)
+        warning(sprintf("Warning during GET request: %s", w$message))
+        invokeRestart("muffleWarning") # Muffle the warning if needed
+        NULL
+    }
+  )
+  
+  # Parse the HTML content
+  parsed_html <- 
+    resp_body_html(html)
+  
+  # Return a list object with the basic information of each product
+  return(parsed_html)
+}
+
+search_html_extract <- function(html) {
+
+  # Extract the title of the product
+  titles_products <- 
+    html %>%
+    html_elements(".a-color-base.a-text-normal") |> 
+    html_text2()
+  ## Better not to add prices etc because they are not always available
+  # prices_whole_products <- 
+  #   html %>%
+  #   html_elements(".a-price-whole") |> 
+  #   html_text2()
+  # prices_fractional_products <-
+  #   html %>%
+  #   html_elements(".a-price-fraction") |> 
+  #   html_text2()
+   links_products <- 
+     html |> 
+     html_elements("div.a-row.a-size-base.a-color-base > div:nth-child(1) > a") |> 
+     html_attr("href")
+  
+  if (length(titles_products) == 0) {
+    warning("No products found")
+    return(NULL)
+  }
+  # if (length(titles_products) != length(links_products)) {
+  #   warning(paste0("Number of titles and prices do not match: ", 
+  #               length(titles_products), " titles and ", 
+  #               length(prices_whole_products), " prices"))
+  # }
+  
+  list_products <- 
+    list(titles_products, 
+         links_products)
+  return(list_products)
+}
+
+# 2. Get the HTML content of the Amazon search results page
+
+url <- "https://www.amazon.co.uk/s?k=e-bike"
+
+html_search <- requester(url)
+list_search_output <- search_html_extract(html_search)
+
+# 3. Get the output in an easier to parse format.
+
+list_search_output <- 
+  list_search_output |> 
+  transpose() |> 
+  as_tibble()
+
+
+```
+
+
+```{r}
+
+html_product <- 
+  requester(list[[1]][4])
 
 
 
 
 ```
+
+
 
 
