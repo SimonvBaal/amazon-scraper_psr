@@ -1,0 +1,42 @@
+---
+title: "Amazon HTTP"
+author: "Simon T van Baal"
+date: "2024-12-02"
+output: html_document
+---
+
+
+
+```{r}
+
+packages <- 
+  c("renv", "usethis", "httr2", "rvest", "jsonlite", "dplyr", "tidyr", "readr")
+
+for (package in packages) {
+  if (!require(package, character.only = TRUE)) {
+    install.packages(package)
+  }
+  library(package, character.only = TRUE)
+}
+
+# Create a new project
+# use_git_config(user.name = "Simon T van Baal", 
+#                user.email = "simonvanbaal.behsci@gmail.com")
+# use_git()
+# use_github()
+
+
+
+
+```
+
+
+```{r}
+
+
+
+
+
+```
+
+
